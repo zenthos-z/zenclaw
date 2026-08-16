@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="cover.png" alt="zenclaw cover" width="100%">
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/OpenClaw-方法论%20%26%20增强工具-2962ff?style=flat-square&logo=openai&logoColor=white" alt="OpenClaw">
   <img src="https://img.shields.io/badge/MIT-License-green?style=flat-square" alt="License">
 </p>
@@ -120,6 +124,8 @@ open tools/knowledge-map-viewer/index.html
 # 第 3 级：部署文件列车（需对象存储 + 静态托管）
 # 详见 tools/serving-window/README.md
 ```
+
+> 🤖 **给 AI Agent 的部署引导**：你的 Agent 要部署这套工具？直接读 [docs/AGENTS.md](./docs/AGENTS.md)——包含部署流程、常见坑、配置清单。
 
 ---
 
