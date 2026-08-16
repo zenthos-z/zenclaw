@@ -1,0 +1,17 @@
+{
+  "updated": "2026-08-16T10:00:00Z",
+  "version": 1,
+  "title": "我的产出示例",
+  "items": [
+    {
+      "id": "example-report",
+      "type": "markdown",
+      "title": "示例报告",
+      "size": 1024,
+      "group": "示例",
+      "version": 1,
+      "persistence": "persistent",
+      "url": "https://example.com/report.md"
+    }
+  ]
+}
