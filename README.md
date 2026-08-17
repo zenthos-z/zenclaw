@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="cover.webp" alt="zenclaw cover" width="100%">
+  <img src="cover.jpg" alt="zenclaw cover" width="100%">
 </p>
 
 <p align="center">
