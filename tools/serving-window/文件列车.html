@@ -1184,6 +1184,11 @@ function loadImage(it){
    ============================================================ */
 const KM_SVG_NS="http://www.w3.org/2000/svg";
 const KM_PAL=["#2962ff","#00897b","#c2410c","#b45309","#6d28d9","#be185d","#15803d","#475569"];
+// —— 三层配色（与最新 Viewer 模板 nodeColor 同步）——
+const KM_LAYER_TAGS=new Set(["骨架层","展开层","实例层"]);
+const KM_LAYER_COLORS={"骨架层":"#2962ff","展开层":"#ea580c","实例层":"#8a8f98"};
+const KM_PAPER_COLOR="#94a3b8";
+let KM_CATEGORY_COLORS={};   // 展开层类别动态色（色相轮均匀取色，构建于 renderKnowledgeMap 内）
 // 关系类型：颜色 / 虚线 / 图例样式 / 中文标签 / 英文键 / 箭头方向(1=单向 2=双向)
 const KM_REL={
   depends_on:{color:"#2962ff",dash:null,cls:"",label:"依赖",en:"depends_on",arrow:1},
@@ -1211,11 +1216,19 @@ const KM_EVIDENCE={
 };
 function kmEviOf(e){return KM_EVIDENCE[e]||(e?{label:String(e).replace(/^#/,""),rank:1}:null);}
 const KM_DEMO_DATA = {"meta": {"title": "空间尺度理解与度量推理 — 技术路线知识地图", "version": "v1.2", "created": "2026-07-25", "updated": "2026-07-28", "domain": "AI × Spatial Intelligence × Interior Design", "tags_schema": ["感知基础", "模型层", "应用层", "基础模型", "评测基准", "自监督预训练", "深度补全", "具身智能", "世界模型", "自动驾驶"], "description": "基于四方向论文调研（S2+arXiv, 79→36篇精选）→ 2026-07-28 新增LingBot-Vision/HiSpatial/MoGe/SD-VLM → 同日v1.2新增自动驾驶单目3D检测+世界模型空间推理路径。覆盖尺寸推理的三条根本路径：几何显式管线 / 统计先验VLM / 潜空间世界模型。目标：回答「室内设计精确尺寸推理的AI技术路线」。"}, "nodes": [{"node_id": "sec_d2_metric_depth", "title": "单目度量深度估计", "tags": ["感知基础", "基础模型"], "maturity": "成熟未闭合", "status": "fulfilled", "created": "2026-07-25", "updated": "2026-07-28", "year": 2024, "body": "核心能力：从单张RGB图像输出per-pixel度量深度（米级）。\n\n技术演进四阶段：\n1. 相对深度时代 (2020-22)：MiDaS/DPT\n2. 度量突破 (2023)：ZoeDepth双分支、Metric3D规范相机空间\n3. 基础模型爆发 (2024)：DA V2(1950引)、Depth Pro(零样本)、Metric3D v2、Prompt DA\n4. 轻量化交互 (2025-)：IMU替代LiDAR、传感器融合\n\n精度边界（2026-07-28经验证）:\n- NYUv2 (室内) SOTA RMSE ~0.29-0.33m（Metric3D v2: 0.29, LingBot linear probe: 0.296, DA V2 indoor: ~0.33）\n- KITTI (室外) SOTA RMSE ~2.3-2.5m\n- 1.8m沙发测距误差约±11-27cm（根据0.30m RMSE + 距离缩放推算）\n\n2026新: UniDepthV2 (TPAMI), InfiniDepth (arXiv), Depth Anything with Any Prior (arXiv)"}, {"node_id": "sec_d3_abstract_3d", "title": "抽象3D表征与世界模型", "tags": ["感知基础", "模型层"], "maturity": "有论文支撑", "status": "fulfilled", "created": "2026-07-25", "updated": "2026-07-28", "year": 2025, "body": "核心能力：从图像流持续构建3D空间表征，输出度量尺度的点云/包围框。\n\n技术演进：\n1. 持续3D感知 (2025 Early)：C3D Percep (CVPR, 517引)\n2. VLM-3D融合 (2025 Mid)：VLM-3R(CVPR 2026)、G2VLM(CVPR 2026)\n3. 世界模型+反思 (2025-26)：ParticleFormer、ReVSI\n\n2026关键新工作:\n- HiSpatial (CVPR 2026, 微软): 首个完整D3→D1集成管线\n- SpatialStack (CVPR 2026): 层级式几何-语言融合\n- Holi-Spatial (arXiv): 视频流→全息3D空间智能"}, {"node_id": "sec_d1_spatial_vlm", "title": "空间度量多模态大模型", "tags": ["模型层", "应用层"], "maturity": "有论文支撑", "status": "fulfilled", "created": "2026-07-25", "updated": "2026-07-28", "year": 2024, "body": "核心能力：赋予VLM物理度量感知。\n\n技术演进：\n1. 概念验证 (2024)：SpatialVLM (CVPR, 945引)\n2. 基准驱动 (2025 H1)：MM-Spatial(ICCV)、InternSpatial\n3. 深度挑战 (2025 H2)：LEGO-Puzzles、ViewSpatial-Bench\n4. 方案探索 (2025 H2-)：SD-VLM(NeurIPS 2025)、HiSpatial(CVPR 2026)\n\n精度边界（2026-07-28溯源）:\n- SD-VLM MSMU-Bench: 超越GPT-4o 26.91%和Intern-VL3-78B 25.56%\n- GPT-4o定量准确率~32%, 定性~67%（SD-VLM论文Table）\n- SpatialBench: 定量位置/尺寸最低, 计数>88%\n- 定量空间问答current SOTA仍在~30-50%, 不满足生产级"}, {"node_id": "sec_d4_floorplan", "title": "图纸矢量化与几何约束求解", "tags": ["应用层"], "maturity": "有论文支撑", "status": "fulfilled", "created": "2026-07-25", "updated": "2026-07-28", "year": 2026, "body": "从raster户型图/点云提取矢量户型图。\n\n演进：像素分析(~2018)→结构化重建(2022-24: HEAT→RoomFormer)→VLM时代(2025-26: FloorplanVLM, TLC-Plan)\n\n关键挑战：「几何幻觉」——VLM在精确空间生成上的不可靠性。"}, {"node_id": "sec_dav2", "title": "Depth Anything V2", "tags": ["基础模型", "感知基础"], "maturity": "成熟未闭合", "status": "fulfilled", "created": "2026-07-25", "updated": "2026-07-28", "year": 2024, "body": "NeurIPS 2024, 1950引。深度基础模型里程碑。\n\n精度: NYUv2 metric finetune RMSE ~0.33m, KITTI metric outdoor RMSE ~2.8m\n\n枢纽: 向后继承MiDaS/DPT/ZoeDepth, 向前开启Prompt DA和大量下游应用。"}, {"node_id": "sec_depth_pro", "title": "Depth Pro (Apple)", "tags": ["基础模型", "感知基础"], "maturity": "成熟未闭合", "status": "growing", "created": "2026-07-25", "updated": "2026-07-28", "year": 2024, "body": "ICLR 2025, 518引。零样本度量深度，<1秒推理，无需相机内参。\n\n主指标: δ1 和 平均rank (2.5, 6个dataset中最佳)\n边界精度SOTA: F1和boundary recall全面领先。"}, {"node_id": "sec_floorplanvlm", "title": "FloorplanVLM", "tags": ["应用层"], "maturity": "概念阶段", "status": "growing", "created": "2026-07-25", "updated": "2026-07-28", "year": 2026, "body": "2026年arXiv (2602.06507), 2引。基于Qwen2.5-VL-3B, 将户型图矢量化定义为序列建模任务。\n\n使用GRPO RL缓解「几何幻觉」。Floorplan-2M数据集。VLM进入矢量户型图范式转换信号。"}, {"node_id": "sec_spatialvlm", "title": "SpatialVLM", "tags": ["模型层"], "maturity": "经典闭环", "status": "fulfilled", "created": "2026-07-25", "updated": "2026-07-28", "year": 2024, "body": "CVPR 2024, 945引。奠基石。\n\n3D场景→自动生成空间QA对→SFT VLM。首次将空间推理从语义关系(left/right)推进到度量关系(X meters)。"}, {"node_id": "sec_c3d_perception", "title": "Continuous 3D Perception Model", "tags": ["感知基础", "基础模型"], "maturity": "有论文支撑", "status": "fulfilled", "created": "2026-07-25", "updated": "2026-07-28", "year": 2025, "body": "CVPR 2025, 517引。D3最高影响力。\n\n状态化循环模型——不是逐帧估计, 是在时间维度累积3D知识。输出度量尺度点云图。思想:「空间理解不是快照, 是持续构建过程」。"}, {"node_id": "sec_lingbot_vision", "title": "LingBot-Vision / LingBot-Depth 2.0 (Ark)", "tags": ["自监督预训练", "感知基础", "深度补全"], "maturity": "有论文支撑", "status": "growing", "created": "2026-07-28", "year": 2026, "body": "2026年7月技术报告(arXiv:2607.05247), 31页。Zelin Fu, Bin Tan, Nan Xue等。\n\n核心: Masked Boundary Modeling—边界作为原生学习信号。\n1B ViT-g, 300k迭代(≈1/3 DINOv3计算量)。\n\n精度:\n- NYUv2 depth RMSE (linear probe, frozen): 0.296 ← 超越7B DINOv3 (0.309)\n- 蒸馏ViT-L 0.3B: 0.310 ≈ 7B DINOv3, 参数少23×\n- LingBot-Depth 2.0: 14个depth completion benchmark领先\n\n⚠️ 深度补全(有稀疏深度先验), 非单目深度估计。不解决单帧尺度歧义。"}, {"node_id": "sec_hispatial", "title": "HiSpatial (微软)", "tags": ["模型层"], "maturity": "有论文支撑", "status": "growing", "created": "2026-07-28", "year": 2026, "body": "CVPR 2026 (arXiv:2603.25411), 微软亚洲研究院+清华。\n\n4级层次化3D空间理解: 几何感知→属性识别→关系推理→抽象推理\n用MoGe点云作为输入→首次完整实证D3→D1集成管线\nHiSpatial-3B在多项spatial benchmark SOTA。开源1.2M图像+空间标注训练数据。"}, {"node_id": "sec_moge", "title": "MoGe / MoGe-2 (度量几何)", "tags": ["基础模型", "感知基础"], "maturity": "有论文支撑", "status": "growing", "created": "2026-07-28", "year": 2025, "body": "MoGe: CVPR 2025, 开源度量尺度3D点云模型。\nMoGe-2: NeurIPS 2025, 改进细节+度量尺度。\n\n关键角色: HiSpatial用MoGe作输入, 是D3→D1集成管线的感知前端。精度优于Metric3D v2 (多数据集benchmark)。"}, {"node_id": "sec_sd_vlm", "title": "SD-VLM (阿里)", "tags": ["模型层"], "maturity": "有论文支撑", "status": "growing", "created": "2026-07-28", "year": 2025, "body": "NeurIPS 2025录用(原arXiv:2509.17664, 15引)。\n\nMSMU数据集: 700K QA pairs, 2.5M数值标注, 10K CoT样本\n深度位置编码。MSMU-Bench: 5类定量+7类定性空间问答\n\n精度: 超越GPT-4o 26.91%, 超越Intern-VL3-78B 25.56%\n定量≈50-60%, 定性≈67% ← VLM空间问答current SOTA"}, {"node_id": "sec_autonomous_3d_det", "title": "自动驾驶单目3D物体检测", "tags": ["自动驾驶", "模型层"], "maturity": "成熟未闭合", "status": "growing", "created": "2026-07-28", "year": 2024, "body": "从2D检测框+预测深度+已知焦距→3D包围框(h,w,l)。\n\n核心公式: H_3D = (Z × H_2D) / f (f已知)\n\n精度: 车辆尺寸 MAE ~0.10-0.26m (xyz位置MAE ~0.1-0.2m)\n\n⚠️ 高度结构化约束: 已知相机标定参数+平坦地面假设+受限物体类别(车/人/骑行者<10类)+窄尺寸方差(轿车±10%)+多帧时序追踪。\n\n这些条件室内设计场景一个都不满足。其准确不是推理能力的证明, 而是约束太强。\n\n综述: \"3D Object Detection from Images for Autonomous Driving\" (TPAMI 2024, 223引)\n参考数据: Blumenthal 学士论文 TUM (Mask R-CNN + 几何约束)"}, {"node_id": "sec_geometric_imagination", "title": "几何想象与潜空间空间推理 (Geometric Imagination)", "tags": ["世界模型", "模型层"], "maturity": "概念阶段", "status": "growing", "created": "2026-07-28", "year": 2025, "body": "Lian et al., Nov 2025。核心概念: VLM能否「在内部进行几何想象」—像人在脑海中旋转物体来推断形状。\n\n方法: Iterative Spatial Transformations on Internal Visual Embeddings\nBenchmark: SSI-Bench (Yang et al., Feb 2026)\n  - 人类约束一致性3D推理: 91.6%\n  - 当前最佳VLM: 33.6%\n  - 差距超过2倍, 表明潜空间推理route系统性失败\n\n思想: 路径3（世界模型）是理论上的完美载体——潜空间内推理、不依赖显式几何管线。但离实用差一个数量级。\n\n关联: 马毅「空间智能」概念—缺乏具身经验=内在物理模型缺失"}, {"node_id": "sec_robo_brain_25", "title": "RoboBrain 2.5 (具身基础模型)", "tags": ["具身智能", "模型层"], "maturity": "有论文支撑", "status": "growing", "created": "2026-07-28", "year": 2026, "body": "arXiv 2601.14352 (2026)。Qwen3-VL backbone。\n\n核心: 从2D像素级grounding→depth-aware coordinate prediction + absolute metric constraint comprehension\n\n关键术语: metric blindness (现有多模态认知模型普遍缺乏度量感知)\n双路径: 精确3D空间推理 + 稠密时序值估计\n输出: 完整3D操作轨迹(有序关键点序列)。用于机器人操作。"}, {"node_id": "sec_world_model_platform", "title": "世界模型平台 (Genie 3 / Cosmos 3 / Marble)", "tags": ["世界模型", "基础模型"], "maturity": "有论文支撑", "status": "growing", "created": "2026-07-28", "year": 2026, "body": "2025-2026年世界模型爆发:\n\n- Genie 3 (Google DeepMind, Aug 2025): 首个实时交互通用世界模型, 24fps生成可导航3D世界\n- Cosmos 3 (NVIDIA, 2026): Omnimodal World Model—Reasoner理解 + Generator合成。Predict/Transfer/Reason三层\n- Marble (World Labs, Fei-Fei Li, Nov 2025): 商业级3D环境生成+导航\n- AMI Labs (Yann LeCun, 2026): 独立后€500M融资, 构建理解物理而非预测文本的AI\n\n对尺寸推理的意义: 隐式世界知识—如果模型能预测「从另一个角度看这个房间什么样」, 它就隐含理解3D空间布局。但从未被用于精确尺寸推理。生成质量低, 目标是机器人训练数据生成。"}, {"node_id": "sec_paiworld", "title": "PAIWorld (3D一致性世界模型)", "tags": ["世界模型", "模型层"], "maturity": "有论文支撑", "status": "growing", "created": "2026-07-28", "year": 2026, "body": "arXiv 2606.18375 (2026)。\n\n核心: 显式跨视角几何一致性—不是flat concatenation(所有view连接起来), 而是显式cross-view geometric reasoning。\n\n超越Cosmos-Predict2和Wan2.1的3D一致性。\nScene Consistency Score: 0.9041 (AgiBot Challenge最高)\n⚠️ 注意: Scene Consistency ≠ Metric Accuracy。世界模型内的3D一致性不保证输出精确尺寸。"}, {"node_id": "sec_interior_design_goal", "title": "室内设计精确尺寸推理（目标应用）", "tags": ["应用层"], "maturity": "概念阶段", "status": "growing", "created": "2026-07-25", "updated": "2026-07-28", "year": 2026, "body": "目标: 从室内照片/视频推理精确物理尺寸(房间长宽高、家具尺寸、间距)。\n\n三路径对比 (2026-07-28):\n\n路径1-几何显式管线 (RGB→深度→3D→测量):\n  自动驾驶场景MAE ~0.10-0.26m (已知相机+平坦地面+严格类别先验+时序追踪)\n  室内场景单帧~±11-27cm (0.30m RMSE / 2-5m距离)\n  最优: 多帧融合+LingBot边界跟踪有望±3-5cm, 但需已知相机参数或参照物\n\n路径2-统计先验VLM (SD-VLM/HiSpatial):\n  定量问答~30-50%, 不够生产级\n\n路径3-潜空间世界模型:\n  人类SSI-Bench: 91.6%\n  最佳VLM: 33.6%\n  系统性失败, 根本原因在缺乏具身经验\n\n(2026-07-28) 两轮调研核心结论:\n  瓶颈不是模型选型或路径优劣, 而是信息论硬约束—单帧2D投影丢失深度维度, 损失信息不能通过NN凭空创造。\n  路径1(几何管线)在已知相机和参照物下做到±10cm级别, 已是最佳实用方案。"}], "relations": [{"from": "sec_d2_metric_depth", "to": "sec_d1_spatial_vlm", "type": "depends_on", "evidence": "#原文引用", "description": "D1度量空间推理要求度量深度信息。SD-VLM深度编码直接注入VLM。", "papers": ["SD-VLM (2025)", "SpatialVLM (2024)"]}, {"from": "sec_d2_metric_depth", "to": "sec_d3_abstract_3d", "type": "depends_on", "evidence": "#结构推导", "description": "D3依赖度量深度作前端输入。HiSpatial+MoGe是D2→D3→D1完整实证。", "papers": ["HiSpatial (2026)", "MoGe (2025)", "C3D Percep (2025)"]}, {"from": "sec_d3_abstract_3d", "to": "sec_d1_spatial_vlm", "type": "depends_on", "evidence": "#原文引用", "description": "VLM-3R/G2VLM在交叉点。HiSpatial(2026)首次完整D3→D1集成。", "papers": ["HiSpatial (2026)", "G2VLM (2025)", "VLM-3R (2025)"]}, {"from": "sec_dav2", "to": "sec_d2_metric_depth", "type": "supports", "evidence": "#原文引用", "description": "DA V2是D2最主要的基础模型(1950引), 提供度量深度微调方案。", "papers": ["DA V2 (2024)", "Prompt Depth Anything (2024)"]}, {"from": "sec_depth_pro", "to": "sec_d2_metric_depth", "type": "supports", "evidence": "#原文引用", "description": "Depth Pro代表零样本度量深度实用化路线(无需相机内参)。", "papers": ["Depth Pro (2024)", "Metric3D v2 (2024)"]}, {"from": "sec_spatialvlm", "to": "sec_d1_spatial_vlm", "type": "triggers", "evidence": "#原文引用", "description": "SpatialVLM确立Spatial VQA子方向。后续等工作构建其上。", "papers": ["SpatialVLM (2024)", "MM-Spatial (2025)"]}, {"from": "sec_c3d_perception", "to": "sec_d3_abstract_3d", "type": "triggers", "evidence": "#原文引用", "description": "C3D Percep (CVPR 2025, 517引)触发VLM-3R/G2VLM等后续。", "papers": ["C3D Percep (2025)", "VLM-3R (2025)"]}, {"from": "sec_d1_spatial_vlm", "to": "sec_d3_abstract_3d", "type": "triggers", "evidence": "#结构推导", "description": "D1揭示VLM空间推理失败→触发D3研究动机。形成正反馈。", "papers": ["ViewSpatial-Bench (2025)", "G2VLM (2025)"]}, {"from": "sec_moge", "to": "sec_hispatial", "type": "depends_on", "evidence": "#原文引用", "description": "HiSpatial用MoGe作3D感知前端→D2→D3→D1集成的重要工程证明。", "papers": ["HiSpatial (2026)", "MoGe (2025)"]}, {"from": "sec_lingbot_vision", "to": "sec_d2_metric_depth", "type": "supports", "evidence": "#原文引用", "description": "LingBot-Vision边界中心预训练→深度表征提升。1B超越7B DINOv3。不解决单帧尺度歧义。", "papers": ["LingBot-Vision (2026)"]}, {"from": "sec_sd_vlm", "to": "sec_d1_spatial_vlm", "type": "supports", "evidence": "#原文引用", "description": "SD-VLM是最深度的D1实证—5类定量+7类定性空间问答benchmark, 证明深度注入改善度量空间能力。", "papers": ["SD-VLM (2025)"]}, {"from": "sec_autonomous_3d_det", "to": "sec_interior_design_goal", "type": "supports", "evidence": "#领域推断", "description": "⚠️ 教训, 非直接支撑。自动驾驶的MAE ~0.10-0.26m建立在4个室内场景不具备的约束上(已知相机+受限类别+平坦地面+尺寸先验)。其成功证明的是: 精确尺寸必须有几何约束补偿, 而非纯视觉可以。", "papers": ["3D Obj Detection Survey (TPAMI 2024)"]}, {"from": "sec_geometric_imagination", "to": "sec_interior_design_goal", "type": "supports", "evidence": "#领域推断", "description": "⚠️ 理论路线, 实证不足。SSI-Bench显示人类91.6% vs VLM 33.6%。潜空间推理route系统性差距的根本原因在缺乏具身经验(马毅论点)。路径3是目前最远的路。", "papers": ["Geometric Imagination (2025)", "SSI-Bench (2026)"]}, {"from": "sec_world_model_platform", "to": "sec_interior_design_goal", "type": "supports", "evidence": "#领域推断", "description": "⚠️ 潜在可能。隐式世界知识—模型能预测跨视角场景即隐含3D空间理解。但从未用于精确尺寸推理。Genie3/Cosmos3/Marble目标在robotics training data生成, 非尺寸测量。", "papers": ["Cosmos 3 (2026)", "Genie 3 (2025)"]}, {"from": "sec_paiworld", "to": "sec_world_model_platform", "type": "supports", "evidence": "#原文引用", "description": "显式cross-view geometric reasoning→3D一致性超越Cosmos-Predict2和Wan2.1。但Scene Consistency ≠ Metric Accuracy。", "papers": ["PAIWorld (2026)"]}, {"from": "sec_robo_brain_25", "to": "sec_geometric_imagination", "type": "depends_on", "evidence": "#结构推导", "description": "RoboBrain 2.5的metric blindness诊断与Geometric Imagination的理论一致。从depth-aware坐标预测切入同一问题。", "papers": ["RoboBrain 2.5 (2026)", "Geometric Imagination (2025)"]}], "timeline": [{"year": "2020-22", "event": "D2基础: MiDaS/DPT建立相对深度估计范式"}, {"year": "2022", "event": "D4突破: HEAT首次Transformer端到端户型图重建"}, {"year": "2023", "event": "D2度量化: ZoeDepth首次零样本度量深度"}, {"year": "2023", "event": "D4矢量化: RoomFormer/HouseDiffusion端到端矢量输出"}, {"year": "2024", "event": "D2爆发: DA V2(1950引)+Depth Pro(518引)+Metric3D v2+Prompt DA"}, {"year": "2024", "event": "D1诞生: SpatialVLM(945引)开创度量空间VQA"}, {"year": "2024", "event": "自动驾驶3D检测综述(TPAMI 2024, 223引)总结图像→3D包围框全路线"}, {"year": "2025", "event": "SD-VLM(NeurIPS): 深度编码VLM, MSMU定量空间问答benchmark"}, {"year": "2025", "event": "D3爆发: C3D Percep(517引)+VLM-3R(CVPR)+G2VLM(CVPR)+MoGe(CVPR)"}, {"year": "2025", "event": "Geometric Imagination: 潜空间空间推理概念提出, SSI-Bench公布—人类91.6% vs VLM 33.6%"}, {"year": "2025", "event": "Genie 3 (DeepMind): 首个实时交互通用世界模型"}, {"year": "2025", "event": "World Labs (Fei-Fei) Marble + NVIDIA Cosmos 平台发布"}, {"year": "2026", "event": "HiSpatial(CVPR 2026): 首次完整D3→D1集成管线实证"}, {"year": "2026", "event": "LingBot-Vision: 边界中心自监督, 1B超越7B DINOv3深度表征"}, {"year": "2026", "event": "PAIWorld: 显式跨视角几何一致性世界模型"}, {"year": "2026", "event": "RoboBrain 2.5: depth-aware坐标预测, 诊断metric blindness"}, {"year": "2026", "event": "Cosmos 3 (NVIDIA): Omnimodal World Model—Reasoner+Generator"}, {"year": "2026", "event": "AMI Labs (LeCun): 独立后€500M融资, 构建物理理解AI"}, {"year": "2026", "event": "D4 VLM化: FloorplanVLM将矢量化定义为序列建模任务"}], "cross_cutting_insight": {"core_narrative": "2024 D2度量深度+D1空间VLM突破 → 2025 D3抽象3D爆发+SD-VLM+Geometric Imagination+世界模型爆发(Cosmos/Genie3) → 2026 D3→D1集成(HiSpatial)+预训练升级(LingBot)+3D一致性世界模型(PAIWorld)+具身基础模型(RoboBrain 2.5)。三路径(几何显式/统计先验VLM/潜空间世界模型)交织进展, 但核心瓶颈一致。", "three_pathways": {"path1_geometric": "RGB→深度→3D→测量。自动驾驶MAE ~0.1-0.26m（高度结构化）。室内单帧±11-27cm, 多帧有望±3-5cm。当前最佳实用方案。", "path2_vlm": "VLM端到端空间问答。定量~30-50%。不够生产级但快速迭代中。", "path3_world_model": "潜空间空间推理。人类91.6% vs VLM 33.6% (SSI-Bench)。理论完美但实证最弱。"}, "core_conclusion_20260728": "两轮调研(四线D1-D4 + 自动驾驶+世界模型)走向同一结论：单帧2D投影丢失深度维度是信息论硬约束。损失的信息不能通过NN凭空创造。路径1(几何管线)在已知相机+参照物下做到±10cm级别已是最佳实用方案。路径3(世界模型潜空间推理)差距是系统性的(SSI-Bench: 2.7×), 根因在缺乏具身经验。", "shortest_path": "D2(深度) + 已知相机(EXIF/Metadata) + 多帧融合(视频扫描) + 边界跟踪(LingBot/C3D Percep)。预计±3-5cm级别在2026-27年可工程化, ±1cm级别需硬件辅助(LiDAR/结构光)。", "critical_gap": "1)室内设计专用benchmark和微调数据仍缺失; 2)单帧绝对尺度歧义在信息论层面未解决; 3)材质鲁棒性(玻璃/镜面/白墙)是系统性难题; 4)世界模型路径的SSI-Bench差距揭示根本性认知瓶颈(具身经验缺失); 5)自动驾驶的成功经验不能直接迁移(约束条件完全不匹配)。", "correction_log_20260728": "v1.1修正v1.0中未追溯的精度数字。v1.2新增自动驾驶+世界模型两条平行调研路径及三条根本路径的对比分析。所有精度数字标注证据等级(#原文引用/#结构推导/#领域推断)和来源论文。"}};
-// 标签取色：meta.tagColors 覆盖 > tags_schema 自动分配 > 哈希兜底（spec §七）
+// 标签取色：meta.tagColors 覆盖 > 层级色 > 论文灰 > 类别动态色 > tags_schema 自动分配 > 哈希兜底（spec §七）
 function kmTagColor(sch,tagColors,t){
   if(tagColors&&tagColors[t])return tagColors[t];
+  if(KM_LAYER_COLORS[t])return KM_LAYER_COLORS[t];
+  if(t==="论文"||t==="未分类")return KM_PAPER_COLOR;
+  if(KM_CATEGORY_COLORS[t])return KM_CATEGORY_COLORS[t];
   const i=sch.indexOf(t);if(i>=0)return KM_PAL[i%KM_PAL.length];
   let h=0;for(let k=0;k<t.length;k++)h=(h*31+t.charCodeAt(k))>>>0;return KM_PAL[h%KM_PAL.length];
+}
+// 分类色：跳过层级标签，取第一个真正的类别标签（与 Viewer 模板 categoryTag 同步）
+function kmCategoryTag(n){
+  const tags=n.tags||[];
+  return tags.find(t=>!KM_LAYER_TAGS.has(t))||tags[0]||"未分类";
 }
 function renderKnowledgeMap(mount,json){
   // 重复挂载前清理上一实例的 document 级监听器与仿真，避免累积
@@ -1230,6 +1243,25 @@ function renderKnowledgeMap(mount,json){
   const sch=(json.meta&&json.meta.tags_schema)||[];
   const tagColors=(json.meta&&json.meta.tagColors)||{};
   const tcol=t=>kmTagColor(sch,tagColors,t);
+  // —— 展开层类别动态色（与 Viewer 模板 buildCategoryColors 同步）：按实际类别数在色相轮均匀取色 ——
+  KM_CATEGORY_COLORS={};
+  (function buildKmCategoryColors(){
+    const seen=new Set();
+    json.nodes.forEach(n=>{const c=kmCategoryTag(n);if(c&&c!=="未分类"&&c!=="论文")seen.add(c);});
+    const cats=[...seen],N=cats.length||1;
+    cats.forEach((c,i)=>{
+      const h=Math.round(i*360/N);
+      const s=(i%2===0)?78:66, l=(i%2===0)?45:37;   // 相邻类别交替饱和/明度 → 感知区分度更大
+      KM_CATEGORY_COLORS[c]='hsl('+h+','+s+'%,'+l+'%)';
+    });
+  })();
+  // 节点统一着色（与 Viewer 模板 nodeColor 同步）：骨架→品牌蓝 / 实例→中性灰 / 展开→类别动态色
+  const kmNodeColor=n=>{
+    const tags=n.tags||[];
+    if(tags.includes("骨架层"))return KM_LAYER_COLORS["骨架层"];
+    if(tags.includes("实例层"))return KM_LAYER_COLORS["实例层"];
+    return tcol(kmCategoryTag(n));
+  };
   const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const trunc=(s,n)=>{s=String(s);return s.length>n?s.slice(0,n-1)+"…":s;};
 
@@ -1385,8 +1417,8 @@ function renderKnowledgeMap(mount,json){
     const ns=d3.select(gNodes).selectAll("g.kmv-node").data(nodes).enter().append("g").attr("class","kmv-node")
       .attr("transform",d=>'translate('+d.x+','+d.y+')').each(function(d){d._el=this;});
     ns.append("circle").attr("class","kmv-fill").attr("r",NR)
-      .attr("fill",d=>tcol(d.tags&&d.tags[0]||"未分类")).attr("fill-opacity",.20)
-      .attr("stroke",d=>tcol(d.tags&&d.tags[0]||"未分类"))
+      .attr("fill",d=>kmNodeColor(d)).attr("fill-opacity",.20)
+      .attr("stroke",d=>kmNodeColor(d))
       .attr("stroke-width",d=>(KM_MATURITY[d.maturity]||{w:1.5}).w)
       .attr("stroke-dasharray",d=>(KM_MATURITY[d.maturity]||{}).dash||null)
       .attr("stroke-linecap",d=>(KM_MATURITY[d.maturity]||{}).cap||null);
@@ -1472,8 +1504,8 @@ function renderKnowledgeMap(mount,json){
     const ns=d3.select(gNodes).selectAll("g.kmv-node").data([...withYear,...noYear]).enter().append("g").attr("class","kmv-node")
       .attr("transform",d=>'translate('+d._tl.x+','+d._tl.y+')').each(function(d){d._el=this;});
     ns.append("circle").attr("class","kmv-fill").attr("r",NR)
-      .attr("fill",d=>tcol(d.tags&&d.tags[0]||"未分类")).attr("fill-opacity",.20)
-      .attr("stroke",d=>tcol(d.tags&&d.tags[0]||"未分类"))
+      .attr("fill",d=>kmNodeColor(d)).attr("fill-opacity",.20)
+      .attr("stroke",d=>kmNodeColor(d))
       .attr("stroke-width",d=>(KM_MATURITY[d.maturity]||{w:1.5}).w)
       .attr("stroke-dasharray",d=>(KM_MATURITY[d.maturity]||{}).dash||null)
       .attr("stroke-linecap",d=>(KM_MATURITY[d.maturity]||{}).cap||null);
@@ -1499,7 +1531,7 @@ function renderKnowledgeMap(mount,json){
     const noY=nodes.filter(n=>typeof n.year!=="number");
     const groups={};withY.forEach(n=>{(groups[n.year]=groups[n.year]||[]).push(n);});
     const years=Object.keys(groups).map(Number).sort((a,b)=>a-b);
-    const card=n=>{const c=tcol(n.tags&&n.tags[0]||"未分类");const st=KM_STATUS[n.status]||"#94a3b8";const sl=KM_STATUS_LABEL[n.status]||n.status||"—";
+    const card=n=>{const c=kmNodeColor(n);const st=KM_STATUS[n.status]||"#94a3b8";const sl=KM_STATUS_LABEL[n.status]||n.status||"—";
       return '<div class="kmv-tlm-node" data-id="'+esc(n.node_id)+'" style="--c:'+c+'"><span class="kmv-tlm-dot"></span>'
         +'<div class="kmv-tlm-info"><div class="kmv-tlm-title">'+esc(n.title)+'</div><div class="kmv-tlm-meta">'
         +(n.maturity?'<span>'+esc(n.maturity)+'</span>':'')+((n.tags||[]).slice(0,2).map(t=>'<span>'+esc(t)+'</span>').join(""))+'</div></div>'
@@ -1619,7 +1651,7 @@ function renderKnowledgeMap(mount,json){
       const visit=(n,depth)=>{
         const g=document.createElement('div');g.className='kmv-grp';g.style.marginLeft=(depth*12)+"px";
         const ch=child[n.node_id]||[];
-        g.innerHTML='<div class="kmv-gh"><span class="kmv-chev">'+I.chev+'</span><span class="kmv-gdot" style="background:'+tcol(n.tags&&n.tags[0]||"未分类")+'"></span><span class="kmv-gname">'+esc(n.title)+'</span></div>';
+        g.innerHTML='<div class="kmv-gh"><span class="kmv-chev">'+I.chev+'</span><span class="kmv-gdot" style="background:'+kmNodeColor(n)+'"></span><span class="kmv-gname">'+esc(n.title)+'</span></div>';
         const body=document.createElement('div');body.className='kmv-gbody';body.appendChild(nodeItem(n));
         g.querySelector('.kmv-gh').onclick=()=>g.classList.toggle('closed');
         g.appendChild(body);treeBox.appendChild(g);
@@ -1642,7 +1674,7 @@ function renderKnowledgeMap(mount,json){
   }
   function nodeItem(n){
     const el=document.createElement('div');el.className='kmv-nitem';el.dataset.id=n.node_id;
-    el.innerHTML='<span class="kmv-ndot" style="background:'+tcol(n.tags&&n.tags[0]||"未分类")+'"></span><span class="kmv-nm">'+esc(n.title)+'</span>'+(n.year?'<span class="kmv-ny">'+esc(n.year)+'</span>':'');
+    el.innerHTML='<span class="kmv-ndot" style="background:'+kmNodeColor(n)+'"></span><span class="kmv-nm">'+esc(n.title)+'</span>'+(n.year?'<span class="kmv-ny">'+esc(n.year)+'</span>':'');
     el.onclick=()=>{selectNode(n.node_id);centerNode(n);};
     return el;
   }
@@ -1689,6 +1721,17 @@ function renderKnowledgeMap(mount,json){
   function applyTagFilter(){
     const f=tagFilter;
     d3.selectAll("g.kmv-node").classed("kmv-dim",n=>f?!(n.tags||[]).includes(f):false);
+    // 连线：仅两端节点都含该标签（直接相关）才亮，二级/无关连线一律淡出（与 Viewer 模板 linkShown 同步）
+    d3.selectAll("path.kmv-link").classed("kmv-dim",l=>{
+      if(!f)return false;
+      const s=nodeById(l.from),t=nodeById(l.to);
+      return !(s&&t&&(s.tags||[]).includes(f)&&(t.tags||[]).includes(f));
+    });
+    d3.selectAll("path.kmv-tlink").classed("kmv-dim",l=>{
+      if(!f)return false;
+      const s=nodeById(l.from),t=nodeById(l.to);
+      return !(s&&t&&(s.tags||[]).includes(f)&&(t.tags||[]).includes(f));
+    });
     treeBox.querySelectorAll('.kmv-nitem').forEach(el=>{const n=nodeById(el.dataset.id);el.style.opacity=(f&&!(n.tags||[]).includes(f))?.3:"";});
     tlmobile.querySelectorAll('.kmv-tlm-node').forEach(el=>{const n=nodeById(el.dataset.id);if(n)el.classList.toggle('kmv-dim',f?!(n.tags||[]).includes(f):false);});
   }
