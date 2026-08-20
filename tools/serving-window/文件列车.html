@@ -1262,6 +1262,30 @@ function renderKnowledgeMap(mount,json){
     if(tags.includes("实例层"))return KM_LAYER_COLORS["实例层"];
     return tcol(kmCategoryTag(n));
   };
+  // —— 力导向分散度预设（与 Viewer 模板 SPREAD_PRESETS 同步）——
+  // dist=连线距离乘数；charge=排斥力；collide=节点碰撞半径；ticks=预计算步数；xy=中心拉力
+  const KM_SPREAD_PRESETS={
+    compact:{label:"紧凑",dist:0.6,charge:-260,collide:34,ticks:200,xy:0.05},
+    balanced:{label:"均衡",dist:1.0,charge:-460,collide:40,ticks:320,xy:0.04},
+    spread:{label:"分散",dist:1.5,charge:-720,collide:48,ticks:420,xy:0.03},
+    airy:{label:"超散",dist:2.2,charge:-1000,collide:56,ticks:520,xy:0.025}
+  };
+  let kmLayoutPreset="balanced";      // 当前分散度
+  let kmClusterByCategory=false;      // 是否按类别聚簇
+  const kmAnchors={};                 // 类别 → 环形锚点
+  function buildKmClusterAnchors(W,H){
+    // 按类别把锚点均匀铺在一个圆环上（同类节点聚簇用）
+    const cats=[...new Set(nodes.map(n=>kmCategoryTag(n)))];
+    const R=Math.min(W,H)*0.36;
+    cats.forEach((c,i)=>{
+      const ang=-Math.PI/2+i/cats.length*2*Math.PI;
+      kmAnchors[c]={x:W/2+Math.cos(ang)*R,y:H/2+Math.sin(ang)*R};
+    });
+  }
+  function kmAnchorOf(d,W,H){
+    const a=kmAnchors[kmCategoryTag(d)];
+    return a||{x:W/2,y:H/2};
+  }
   const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const trunc=(s,n)=>{s=String(s);return s.length>n?s.slice(0,n-1)+"…":s;};
 
@@ -1304,6 +1328,11 @@ function renderKnowledgeMap(mount,json){
       +'<button class="kmv-btn" data-act="insight" title="核心洞察">'+I.insight+'<span>洞察</span></button>'
       +'<button class="kmv-btn" data-act="zen" title="全屏专注模式">'+I.zenIn+'<span>专注</span></button>'
       +'<button class="kmv-btn" data-act="fit" title="自适应">'+I.fit+'<span>自适应</span></button>'
+      +'<select class="kmv-btn kmv-layout-sel" title="力导向布局分散度" aria-label="布局分散度">'
+        +'<option value="compact">布局·紧凑</option><option value="balanced" selected>布局·均衡</option>'
+        +'<option value="spread">布局·分散</option><option value="airy">布局·超散</option>'
+      +'</select>'
+      +'<button class="kmv-btn kmv-cluster-btn" data-act="cluster" title="按类别聚簇：同类节点聚成簇（配合分类颜色）"><span>聚簇</span></button>'
     +'</div>'
     +'</header>'
     +'<div class="kmv-stage">'
@@ -1349,7 +1378,7 @@ function renderKnowledgeMap(mount,json){
   const detail=q('.kmv-detail'),insight=q('.kmv-insight');
   const sideHead=q('.kmv-tree-title'),sideCnt=q('.kmv-sidecnt'),sideDesc=q('.kmv-side-desc');
 
-  let view='graph',sim=null,zoom=null,selected=null,tagFilter=null,zen=false;
+  let view='graph',sim=null,zoom=null,selected=null,tagFilter=null,zen=false,gLk=null;
 
   function toast(msg){const t=q('.kmv-toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1900);}
 
@@ -1387,17 +1416,20 @@ function renderKnowledgeMap(mount,json){
     gTL.innerHTML='';gLinks.innerHTML='';gNodes.innerHTML='';
     const W=canvas.clientWidth,H=canvas.clientHeight;
     const lk=links.map(l=>({...l,source:l.from,target:l.to}));
+    gLk=lk;
+    const p=KM_SPREAD_PRESETS[kmLayoutPreset]||KM_SPREAD_PRESETS.balanced;
+    buildKmClusterAnchors(W,H);
     sim=d3.forceSimulation(nodes)
       .force("link",d3.forceLink(lk).id(d=>d.node_id)
-        .distance(d=>d.type==="subtopic_of"?70:120)
+        .distance(d=>(d.type==="subtopic_of"?70:120)*p.dist)
         .strength(l=>l.type==="subtopic_of"?0.9:0.45))
-      .force("charge",d3.forceManyBody().strength(-460))
+      .force("charge",d3.forceManyBody().strength(p.charge).distanceMax(900))
       .force("center",d3.forceCenter(W/2,H/2))
-      .force("collide",d3.forceCollide().radius(d=>NR+14))
-      .force("x",d3.forceX(W/2).strength(0.04))
-      .force("y",d3.forceY(H/2).strength(0.04))
+      .force("collide",d3.forceCollide().radius(d=>p.collide))
+      .force("x",d3.forceX(d=>kmClusterByCategory?kmAnchorOf(d,W,H).x:W/2).strength(kmClusterByCategory?0.08:p.xy))
+      .force("y",d3.forceY(d=>kmClusterByCategory?kmAnchorOf(d,W,H).y:H/2).strength(kmClusterByCategory?0.08:p.xy))
       .stop();
-    for(let i=0;i<320;i++)sim.tick();
+    for(let i=0;i<p.ticks;i++)sim.tick();
 
     // 关系线（同对多边错开 + 冲突对称合并）
     const drawnConflict=new Set();
@@ -1444,6 +1476,22 @@ function renderKnowledgeMap(mount,json){
     }
     sim.on("tick",applyTick);applyTick();
     setupZoom();applyTagFilter();
+  }
+  // 布局预设 / 聚簇开关变更：只更新 force 参数并重跑，不重建 DOM（保留拖拽位置）
+  function applyKmLayoutPreset(){
+    if(view!=="graph"||!sim)return;
+    const W=canvas.clientWidth,H=canvas.clientHeight;
+    const p=KM_SPREAD_PRESETS[kmLayoutPreset]||KM_SPREAD_PRESETS.balanced;
+    buildKmClusterAnchors(W,H);
+    sim.force("link",d3.forceLink(gLk).id(d=>d.node_id)
+      .distance(d=>(d.type==="subtopic_of"?70:120)*p.dist)
+      .strength(l=>l.type==="subtopic_of"?0.9:0.45));
+    sim.force("charge",d3.forceManyBody().strength(p.charge).distanceMax(900));
+    sim.force("collide",d3.forceCollide().radius(d=>p.collide));
+    sim.force("x",d3.forceX(d=>kmClusterByCategory?kmAnchorOf(d,W,H).x:W/2).strength(kmClusterByCategory?0.08:p.xy));
+    sim.force("y",d3.forceY(d=>kmClusterByCategory?kmAnchorOf(d,W,H).y:H/2).strength(kmClusterByCategory?0.08:p.xy));
+    sim.alpha(1).restart();
+    setTimeout(()=>{if(view==="graph"&&sim)fitGraph();},900);
   }
   function setupZoom(){
     const root2=d3.select(gZoom);
@@ -1777,6 +1825,17 @@ function renderKnowledgeMap(mount,json){
   insight.onclick=e=>{if(e.target===insight)insight.classList.remove('open');};
   // 移动端「更多」下拉
   q('[data-act=more]').onclick=e=>{e.stopPropagation();q('.kmv-actions').classList.toggle('open');};
+  // 力导向布局分散度预设 / 按类别聚簇开关（与 Viewer 模板 layoutSel/clusterBtn 同步）
+  (function(){
+    const sel=q('.kmv-layout-sel'),btn=q('.kmv-cluster-btn');
+    if(sel)sel.onchange=e=>{kmLayoutPreset=e.target.value;applyKmLayoutPreset();};
+    if(btn)btn.onclick=()=>{
+      kmClusterByCategory=!kmClusterByCategory;
+      btn.classList.toggle('on',kmClusterByCategory);
+      applyKmLayoutPreset();
+      toast(kmClusterByCategory?"已开启按类别聚簇（同类节点成簇）":"已关闭聚簇");
+    };
+  })();
   // 阻止移动端浏览器原生双指缩放，把双指交给 D3 zoom（需求 §2.1）
   ["gesturestart","gesturechange"].forEach(ev=>svg.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
 
