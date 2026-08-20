@@ -87,6 +87,8 @@ button{font-family:inherit; cursor:pointer; color:inherit}
   transition:.15s; white-space:nowrap;
 }
 .tbtn:hover{border-color:var(--accent); color:var(--fg)}
+.tbtn.on{border-color:var(--accent-2); color:var(--accent-2); background:var(--accent-soft)}
+select.layout-sel{cursor:pointer; padding:0 8px; max-width:110px}
 .tbtn svg{width:15px;height:15px}
 .tbtn.primary{background:var(--accent); color:var(--bg); border-color:var(--accent)}
 .tbtn.primary:hover{opacity:.88}
@@ -425,6 +427,16 @@ body.zen .zoom-ctrl{opacity:.9}
       <button id="v-graph" class="on" role="tab">关系图</button>
       <button id="v-timeline" role="tab">时间线</button>
     </div>
+    <select class="tbtn layout-sel" id="layoutSel" title="力导向布局分散度" aria-label="布局分散度">
+      <option value="compact">布局·紧凑</option>
+      <option value="balanced" selected>布局·均衡</option>
+      <option value="spread">布局·分散</option>
+      <option value="airy">布局·超散</option>
+    </select>
+    <button class="tbtn" id="clusterBtn" title="按类别聚簇：同类节点聚成簇（配合分类颜色）" aria-label="按类别聚簇">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg>
+      <span class="lbl">聚簇</span>
+    </button>
     <button class="tbtn" id="insightBtn" title="核心洞察" data-od-id="insight-toggle">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
       <span class="lbl">洞察</span>
@@ -527,8 +539,18 @@ const CONFIG = {
   defaultView: 'graph',           // 'graph' | 'timeline'
   nodeRadius: 22,
   timelineYearGap: 130,
-  tagColors: {},                  // 自定义标签颜色，如 {"感知基础":"#2962ff"}；空则按 tags_schema 顺序自动分配
+  tagColors: {},                  // 手动指定特定标签颜色，如 {"感知基础":"#2962ff"}；未指定的类别按实际数量动态取色
+  layoutPreset: 'balanced',       // 力导向分散度：'compact' | 'balanced' | 'spread' | 'airy'
+  clusterByCategory: false,       // true 时按类别聚簇（同类节点拉向同一环形锚点，配合分类色）
   legendRelations: ['depends_on','supports','triggers','conflicts','replaces','subtopic_of'],
+};
+
+// 力导向分散度预设（dist=连线距离乘数；charge=排斥力；collide=节点碰撞半径；ticks=预计算步数；xy=中心拉力）
+const SPREAD_PRESETS = {
+  compact:  { label:"紧凑", dist:0.6, charge:-260,  collide:34, ticks:200, xy:0.05 },
+  balanced: { label:"均衡", dist:1.0, charge:-460,  collide:40, ticks:320, xy:0.04 },
+  spread:   { label:"分散", dist:1.5, charge:-720,  collide:48, ticks:420, xy:0.03 },
+  airy:     { label:"超散", dist:2.2, charge:-1000, collide:56, ticks:520, xy:0.025 },
 };
 
 /* 数据源：每张地图独占一个目录、文件名固定为 data.json（需求 §1.2）。
@@ -594,14 +616,56 @@ function setData(json){
 const PALETTE = [
   "#2962ff", "#00897b", "#c2410c", "#b45309",
   "#6d28d9", "#be185d", "#15803d", "#475569",
+  "#0891b2", "#7c3aed", "#db2777", "#65a30d",
+  "#ea580c", "#0d9488", "#4f46e5", "#a21caf",
 ];
+// 层级标签：骨架/展开/实例 用固定三色明显区分（时间线视图按层级着色、图例 chips 也显示层级色）
+const LAYER_TAGS = new Set(["骨架层","展开层","实例层"]);
+const LAYER_COLORS = { "骨架层":"#2962ff", "展开层":"#ea580c", "实例层":"#8a8f98" };
+// 实例论文统一用中性灰，避免 57 篇论文各抢一个类别色
+const PAPER_TAG_COLOR = "#94a3b8";
+// 动态类别色板：按实际用到的类别数量 N 在色相轮上均匀取色（hue = 360/N × i），
+// 相邻类别交替明度/饱和度进一步拉开感知距离 —— 类别越多区分度依然最大化，不依赖固定映射
+let CATEGORY_COLORS = {};
+function buildCategoryColors(){
+  CATEGORY_COLORS = {};
+  const seen=new Set();
+  nodes.forEach(n=>{ const c=categoryTag(n); if(c && c!=="未分类" && c!=="论文") seen.add(c); });
+  const cats=[...seen];
+  const N=cats.length||1;
+  cats.forEach((c,i)=>{
+    const h=Math.round(i*360/N);
+    const s=(i%2===0)?78:66;   // 相邻类别饱和度交替
+    const l=(i%2===0)?45:37;   // 相邻类别明度交替 → 感知区分度更大
+    CATEGORY_COLORS[c]=`hsl(${h},${s}%,${l}%)`;
+  });
+}
 function tagColor(tag){
   if(CONFIG.tagColors[tag]) return CONFIG.tagColors[tag];
+  if(LAYER_COLORS[tag]) return LAYER_COLORS[tag];
+  if(tag==="论文") return PAPER_TAG_COLOR;
+  if(tag==="未分类") return PAPER_TAG_COLOR;
+  if(CATEGORY_COLORS[tag]) return CATEGORY_COLORS[tag];
   const sch = (DATA && DATA.meta && DATA.meta.tags_schema) || [];
   const i = sch.indexOf(tag);
   if(i>=0) return PALETTE[i % PALETTE.length];
   let h=0; for(let k=0;k<tag.length;k++) h=(h*31+tag.charCodeAt(k))>>>0;
   return PALETTE[h % PALETTE.length];
+}
+// 分类色：跳过层级标签，取第一个真正的类别标签（如 哲学源头/控制论/神经科学/数学工具/方法论）
+function categoryTag(n){
+  const tags=n.tags||[];
+  return tags.find(t=>!LAYER_TAGS.has(t)) || tags[0] || "未分类";
+}
+// 节点统一着色（关系图/时间线/移动端共用，保证两视图颜色一致）：
+//   骨架层 → 固定品牌蓝（节点少，默认色即可）
+//   实例层 → 中性灰（论文多，避免逐篇抢色）
+//   展开层 → 类别动态色（按实际类别数在色相轮均匀取色，区分度最大）
+function nodeColor(n){
+  const tags=n.tags||[];
+  if(tags.includes("骨架层")) return LAYER_COLORS["骨架层"];
+  if(tags.includes("实例层")) return LAYER_COLORS["实例层"];
+  return tagColor(categoryTag(n));
 }
 const REL = {
   depends_on:  {color:"#2962ff", dash:null,  cls:"",    label:"依赖", en:"depends_on",  arrow:1},
@@ -640,6 +704,7 @@ function initData(){
   const conflictPairs = new Set();
   links.forEach(l=>{ if(l.type==="conflicts") conflictPairs.add(ek(l.from,l.to)); });
   links.forEach(l=>{ l._conflictPair = conflictPairs.has(ek(l.from,l.to)); });
+  buildCategoryColors();   // 类别动态色板依赖 nodes，须在节点初始化后生成
 }
 function setBrandTitle(txt){
   const box=$("m-title"), inner=box.querySelector(".mtxt");
@@ -681,24 +746,41 @@ function buildDefs(){
 }
 
 /* ---------- 4. 关系图（力导向） ---------- */
-let gLinks, gNodes;
+let gLinks, gNodes, gLk=null, gAnchors={};
+function buildClusterAnchors(W,H){
+  // 按类别把锚点均匀铺在一个圆环上（同类节点聚簇用）
+  const cats=[...new Set(nodes.map(n=>categoryTag(n)))];
+  const R=Math.min(W,H)*0.36;
+  gAnchors={};
+  cats.forEach((c,i)=>{
+    const ang=-Math.PI/2 + i/cats.length*2*Math.PI;
+    gAnchors[c]={x:W/2+Math.cos(ang)*R, y:H/2+Math.sin(ang)*R};
+  });
+}
+function anchorOf(d,W,H){
+  const a=gAnchors[categoryTag(d)];
+  return a||{x:W/2,y:H/2};
+}
 function buildGraph(){
   gLinks=$("g-links"); gNodes=$("g-nodes");
   gLinks.innerHTML=""; gNodes.innerHTML="";
   const W=$("canvas").clientWidth, H=$("canvas").clientHeight;
 
+  const p = SPREAD_PRESETS[CONFIG.layoutPreset] || SPREAD_PRESETS.balanced;
   const lk = links.map(l=>({...l, source:l.from, target:l.to}));
+  gLk = lk;
+  buildClusterAnchors(W,H);
   sim = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(lk).id(d=>d.node_id)
-      .distance(d=> d.type==="subtopic_of"?70:120)
+      .distance(d=> (d.type==="subtopic_of"?70:120)*p.dist)
       .strength(l=> l.type==="subtopic_of"?0.9:0.45))
-    .force("charge", d3.forceManyBody().strength(-460))
+    .force("charge", d3.forceManyBody().strength(p.charge).distanceMax(900))
     .force("center", d3.forceCenter(W/2, H/2))
-    .force("collide", d3.forceCollide().radius(d=>CONFIG.nodeRadius+14))
-    .force("x", d3.forceX(W/2).strength(0.04))
-    .force("y", d3.forceY(H/2).strength(0.04))
+    .force("collide", d3.forceCollide().radius(d=>p.collide))
+    .force("x", d3.forceX(d=> CONFIG.clusterByCategory ? anchorOf(d,W,H).x : W/2).strength(CONFIG.clusterByCategory?0.08:p.xy))
+    .force("y", d3.forceY(d=> CONFIG.clusterByCategory ? anchorOf(d,W,H).y : H/2).strength(CONFIG.clusterByCategory?0.08:p.xy))
     .stop();
-  for(let i=0;i<320;i++) sim.tick();
+  for(let i=0;i<p.ticks;i++) sim.tick();
 
   // 关系线（同对多边错开 + 冲突对称合并）
   const drawnConflict = new Set();
@@ -730,9 +812,9 @@ function buildGraph(){
   nodeSel.append("circle")
     .attr("class","fill")
     .attr("r",CONFIG.nodeRadius)
-    .attr("fill", d=>tagColor(d.tags?.[0]||"未分类"))
+    .attr("fill", d=>nodeColor(d))
     .attr("fill-opacity",.20)
-    .attr("stroke", d=>tagColor(d.tags?.[0]||"未分类"))
+    .attr("stroke", d=>nodeColor(d))
     .attr("stroke-width", d=>(MATURITY[d.maturity]||{w:1.5}).w)
     .attr("stroke-dasharray", d=>(MATURITY[d.maturity]||{}).dash||null)
     .attr("stroke-linecap", d=>(MATURITY[d.maturity]||{}).cap||null);
@@ -774,6 +856,23 @@ function buildGraph(){
   sim.on("tick", applyTick);
   applyTick();
   setupZoom();
+}
+// 布局预设 / 聚簇开关变更：只更新 force 参数并重跑，不重建 DOM（保留拖拽位置）
+function applyLayoutPreset(){
+  if(currentView!=="graph"||!sim) return;
+  const W=$("canvas").clientWidth, H=$("canvas").clientHeight;
+  const p=SPREAD_PRESETS[CONFIG.layoutPreset]||SPREAD_PRESETS.balanced;
+  buildClusterAnchors(W,H);
+  sim.force("link", d3.forceLink(gLk).id(d=>d.node_id)
+    .distance(d=> (d.type==="subtopic_of"?70:120)*p.dist)
+    .strength(l=> l.type==="subtopic_of"?0.9:0.45));
+  sim.force("charge", d3.forceManyBody().strength(p.charge).distanceMax(900));
+  sim.force("collide", d3.forceCollide().radius(d=>p.collide));
+  sim.force("x", d3.forceX(d=> CONFIG.clusterByCategory ? anchorOf(d,W,H).x : W/2).strength(CONFIG.clusterByCategory?0.08:p.xy));
+  sim.force("y", d3.forceY(d=> CONFIG.clusterByCategory ? anchorOf(d,W,H).y : H/2).strength(CONFIG.clusterByCategory?0.08:p.xy));
+  sim.alpha(1).restart();
+  // 布局基本稳定后自动取景
+  setTimeout(()=>{ if(currentView==="graph"&&sim) fitView(); }, 900);
 }
 function setupZoom(){
   const root=d3.select(".zoom-root");
@@ -849,8 +948,8 @@ function buildTimeline(){
     .attr("class","node").attr("transform",d=>`translate(${d._tl.x},${d._tl.y})`)
     .each(function(d){ d._el=this; });
   ns.append("circle").attr("class","fill").attr("r",CONFIG.nodeRadius)
-    .attr("fill",d=>tagColor(d.tags?.[0]||"未分类")).attr("fill-opacity",.20)
-    .attr("stroke",d=>tagColor(d.tags?.[0]||"未分类"))
+    .attr("fill",d=>nodeColor(d)).attr("fill-opacity",.20)
+    .attr("stroke",d=>nodeColor(d))
     .attr("stroke-width",d=>(MATURITY[d.maturity]||{w:1.5}).w)
     .attr("stroke-dasharray",d=>(MATURITY[d.maturity]||{}).dash||null)
     .attr("stroke-linecap",d=>(MATURITY[d.maturity]||{}).cap||null);
@@ -878,7 +977,7 @@ function setupZoomTL(W,H){
 function isMobile(){ return window.matchMedia('(max-width:860px)').matches; }
 function tlmEsc(s){ return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
 function tlmCard(n){
-  const c=tagColor(n.tags&&n.tags[0]||"未分类");
+  const c=nodeColor(n);
   const st=STATUS[n.status]||STATUS.growing;
   const stl=STATUS_LABEL[n.status]||n.status||"—";
   return '<div class="tlm-node" data-id="'+tlmEsc(n.node_id)+'" data-od-id="tlm-'+tlmEsc(n.node_id)+'" style="--c:'+c+'">'
@@ -918,7 +1017,7 @@ function mobileSelect(id){
   const nb=neighbors(id);
   $("tlMobile").querySelectorAll(".tlm-node").forEach(el=>{
     el.classList.toggle("sel", el.dataset.id===id);
-    el.classList.toggle("dim", !nb.has(el.dataset.id));
+    el.classList.toggle("dim", (activeTagFilter && !passTagFilter(el.dataset.id)) || !nb.has(el.dataset.id));
   });
 }
 
@@ -951,38 +1050,64 @@ function neighbors(id){
   links.forEach(l=>{ if(l.from===id)set.add(l.to); if(l.to===id)set.add(l.from); });
   return set;
 }
+// —— 统一 dim 判定：标签筛选 × 选中/悬浮高亮 合并，保证筛选态下无关/二级连线永不泄漏 ——
+function passTagFilter(id){ return !activeTagFilter || ((nodeById(id)||{}).tags||[]).includes(activeTagFilter); }
+function linkShown(l){ return passTagFilter(l.from) && passTagFilter(l.to); }
+// 时间线连线透明度：0.85 亮 / 0.06 暗（选中/悬浮）/ 0.16 默认；筛选不过一律 0.04
+function tlinkOp(l, selId, hoverId){
+  if(activeTagFilter && !linkShown(l)) return .04;
+  const focus = hoverId!=null ? hoverId : selId;
+  if(focus!=null) return (l.from===focus||l.to===focus)?0.85:0.06;
+  return activeTagFilter ? .85 : .16;
+}
+// 应用「当前持久状态」的 dim（选中高亮 × 标签筛选）；筛选态下无关连线与节点一律暗
+function applySelDim(){
+  const sel=selectedId, nb=sel!=null?neighbors(sel):null;
+  d3.selectAll("g.node").classed("dim", n=>{
+    if(activeTagFilter && !passTagFilter(n.node_id)) return true;
+    return nb!=null && !(n.node_id===sel||nb.has(n.node_id));
+  });
+  d3.selectAll(".link").classed("dim", l=>{
+    if(activeTagFilter && !linkShown(l)) return true;
+    return nb!=null && !(l.from===sel||l.to===sel);
+  });
+  if(currentView==="timeline") d3.selectAll(".tlink").attr("stroke-opacity", l=> tlinkOp(l, sel, null));
+  document.querySelectorAll(".tlm-node").forEach(el=>{
+    el.classList.toggle("dim", activeTagFilter ? !passTagFilter(el.dataset.id) : false);
+  });
+}
 function highlight(d){
   const nb=neighbors(d.node_id);
-  d3.selectAll("g.node").classed("dim",n=>!nb.has(n.node_id));
-  d3.selectAll(".link").classed("dim",l=> !(l.from===d.node_id||l.to===d.node_id));
+  d3.selectAll("g.node").classed("dim", n=>{
+    if(activeTagFilter && !passTagFilter(n.node_id)) return true;
+    return !nb.has(n.node_id);
+  });
+  d3.selectAll(".link").classed("dim", l=>{
+    if(activeTagFilter && !linkShown(l)) return true;
+    return !(l.from===d.node_id||l.to===d.node_id);
+  });
+  if(currentView==="timeline") d3.selectAll(".tlink").attr("stroke-opacity", l=> tlinkOp(l, null, d.node_id));
 }
 function tlHighlight(d){
   const nb=neighbors(d.node_id);
-  d3.selectAll("g.node").classed("dim",n=>!nb.has(n.node_id));
-  d3.selectAll(".tlink").attr("stroke-opacity",l=> (l.from===d.node_id||l.to===d.node_id)?0.85:0.06);
+  d3.selectAll("g.node").classed("dim", n=>{
+    if(activeTagFilter && !passTagFilter(n.node_id)) return true;
+    return !nb.has(n.node_id);
+  });
+  if(currentView==="timeline") d3.selectAll(".tlink").attr("stroke-opacity", l=> tlinkOp(l, null, d.node_id));
 }
 function unhighlight(){
-  if(selectedId){
-    // 有持久选中：恢复选中节点的相邻高亮，不被 hover 离开清除
-    const nb=neighbors(selectedId);
-    d3.selectAll("g.node").classed("dim",n=>!(n.node_id===selectedId||nb.has(n.node_id)));
-    d3.selectAll(".link").classed("dim",l=>!(l.from===selectedId||l.to===selectedId));
-    if(currentView==="timeline") d3.selectAll(".tlink").attr("stroke-opacity",l=> (l.from===selectedId||l.to===selectedId)?0.85:0.06);
-    return;
-  }
+  if(selectedId){ applySelDim(); return; }
   d3.selectAll("g.node").classed("dim",false);
   d3.selectAll(".link").classed("dim",false);
-  if(currentView==="timeline") d3.selectAll(".tlink").attr("stroke-opacity",.16);
+  if(currentView==="timeline") d3.selectAll(".tlink").attr("stroke-opacity", activeTagFilter? .85 : .16);
   if(activeTagFilter) applyTagFilter();
 }
 function selectNode(id){
   if(!DATA) return;
   selectedId=id;
   d3.selectAll("g.node").classed("sel",n=>n.node_id===id);
-  const nb0=neighbors(id);
-  d3.selectAll("g.node").classed("dim",n=>!(n.node_id===id||nb0.has(n.node_id)));
-  d3.selectAll(".link").classed("dim",l=>!(l.from===id||l.to===id));
-  if(currentView==="timeline") d3.selectAll(".tlink").attr("stroke-opacity",l=> (l.from===id||l.to===id)?0.85:0.06);
+  applySelDim();
   const n=nodeById(id); if(!n) return;
   document.querySelectorAll(".nitem").forEach(el=>el.classList.toggle("sel", el.dataset.id===id));
   const win=$("kmWindow"); const wasHidden=win.hidden; win.hidden=false;
@@ -1144,11 +1269,11 @@ function buildTags(){
 function syncTagChips(){ const f=activeTagFilter; document.querySelectorAll(".tag-chip").forEach(el=>el.classList.toggle("off", !!f && el.dataset.tag!==f)); }
 function toggleTagsPanel(){ $("tagsPanel").classList.toggle("collapsed"); }
 function applyTagFilter(){
+  // 统一 dim：标签筛选 × 选中高亮（无关/二级连线、无关节点一律暗）
+  applySelDim();
   const f=activeTagFilter;
-  d3.selectAll("g.node").classed("dim", n=> f ? !(n.tags||[]).includes(f) : false);
   document.querySelectorAll(".nitem").forEach(el=>{
-    const n=nodeById(el.dataset.id);
-    el.style.opacity = (f && !(n.tags||[]).includes(f)) ? .3 : "";
+    el.style.opacity = (f && !passTagFilter(el.dataset.id)) ? .3 : "";
   });
 }
 
@@ -1196,10 +1321,7 @@ function setView(v){
     document.querySelectorAll(".nitem").forEach(el=>el.classList.toggle("sel",el.dataset.id===selectedId));
     // 切换视图后重建了节点 DOM：重新应用选中高亮（不弹详情窗口）
     d3.selectAll("g.node").classed("sel",n=>n.node_id===selectedId);
-    const nb0=neighbors(selectedId);
-    d3.selectAll("g.node").classed("dim",n=>!(n.node_id===selectedId||nb0.has(n.node_id)));
-    d3.selectAll(".link").classed("dim",l=>!(l.from===selectedId||l.to===selectedId));
-    if(v==="timeline") d3.selectAll(".tlink").attr("stroke-opacity",l=> (l.from===selectedId||l.to===selectedId)?0.85:0.06);
+    applySelDim();
   }
 }
 function setTheme(t){
@@ -1214,6 +1336,19 @@ function setTheme(t){
 $("v-graph").onclick=()=>setView("graph");
 $("v-timeline").onclick=()=>setView("timeline");
 $("themeBtn").onclick=()=>setTheme(CONFIG.theme==="dark"?"light":"dark");
+// 布局分散度预设 / 按类别聚簇开关
+function syncLayoutUI(){
+  $("layoutSel").value = CONFIG.layoutPreset;
+  $("clusterBtn").classList.toggle("on", CONFIG.clusterByCategory);
+}
+$("layoutSel").onchange = e=>{ CONFIG.layoutPreset=e.target.value; applyLayoutPreset(); };
+$("clusterBtn").onclick = ()=>{
+  CONFIG.clusterByCategory=!CONFIG.clusterByCategory;
+  syncLayoutUI();
+  applyLayoutPreset();
+  showToast(CONFIG.clusterByCategory ? "已开启按类别聚簇（同类节点成簇）" : "已关闭聚簇");
+};
+syncLayoutUI();
 $("toggleSide").onclick=()=>$("sidebar").classList.toggle("collapsed");
 $("zIn").onclick=()=>zoom&&d3.select($("viz")).transition().duration(180).call(zoom.scaleBy,1.25);
 $("zOut").onclick=()=>zoom&&d3.select($("viz")).transition().duration(180).call(zoom.scaleBy,0.8);
