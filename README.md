@@ -11,7 +11,7 @@
 
 <p align="center"><b>OpenClaw 学习方法论与功能增强工具集</b></p>
 
-<p align="center"><i>把 OpenClaw 变成你的知识工厂：知识地图 · 论文调研 · 视觉 Prompt · 文件列车</i></p>
+<p align="center"><i>把 OpenClaw 变成你的知识工厂：协作学习 · 知识地图 · 论文调研 · 视觉 Prompt · 文件列车</i></p>
 
 ---
 
@@ -19,7 +19,7 @@
 
 一套经过实战检验的 **OpenClaw 学习方法论 + 功能增强工具集**。它不是技能的堆叠，而是回答三个问题：
 
-1. **怎么学**——如何用知识地图组织知识、用论文调研管线高效阅读文献
+1. **怎么学**——如何用协作学习模式守住认知边界、用知识地图组织知识、用论文调研管线高效阅读文献
 2. **怎么用**——如何增强 OpenClaw 的交付能力（文件列车）、视觉能力（Prompt 方法论）
 3. **怎么部署**——不同的部署条件下，分别该用哪些工具
 
@@ -31,7 +31,7 @@
 
 | 画像 | 特征 | 你会用到 |
 |------|------|---------|
-| 🎓 **科研学习者** | 频繁读论文、做调研、构建知识体系 | 论文调研法、知识地图法 |
+| 🎓 **科研学习者** | 频繁读论文、做调研、构建知识体系 | 协作学习模式、论文调研法、知识地图法 |
 | 🤖 **OpenClaw 重度用户** | 深度使用 Agent，追求效率上限 | 全部增强工具 |
 | 🏠 **自部署者** | 把 OpenClaw 跑在 NAS / ECS / 服务器 | 文件列车、远程交付 |
 
@@ -57,6 +57,7 @@
 |------|------|-------------|
 | [methodology/knowledge-map](./methodology/knowledge-map/) | **知识地图法** | 知识怎么组织才能可视化、可演进、可复用 |
 | [methodology/research](./methodology/research/) | **论文调研法** | 文献调研怎么做到系统、不遗漏、可验证 |
+| [methodology/learning](./methodology/learning/) | **协作学习模式** | 人和 AI 一起学习时，边界画在哪里 |
 | [methodology/visual-prompt](./methodology/visual-prompt/) | **视觉 Prompt 法** | 生图提示词怎么从「碰运气」变成「可复现」 |
 
 ## 🔧 工具层（按部署条件分档）
@@ -116,6 +117,7 @@
 
 ```bash
 # 第 0 级：零部署，先看方法论
+open methodology/learning/
 open methodology/knowledge-map/
 
 # 第 1 级：本地使用，打开 viewer

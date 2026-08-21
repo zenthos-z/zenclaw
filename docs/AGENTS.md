@@ -72,7 +72,8 @@ cp -r <clone>/quick-img ~/.claude/skills/   # 或放入 OpenClaw skills/ 目录
 
 ## 方法论文档直接可用
 
-`methodology/` 三个目录是纯 Markdown 规范，agent 可直接读取并按其执行：
+`methodology/` 四个目录是纯 Markdown 规范，agent 可直接读取并按其执行：
+- `learning/README.md` — 协作学习模式（五原则/五规则/验证协议栈）
 - `knowledge-map/README.md` — 构建知识地图（schema/分层流程/陷阱）
 - `research/README.md` — 论文调研管线（覆盖矩阵/四线交叉/双层筛选）
 - `visual-prompt/README.md` — 视觉提示词方法论（V15/拓扑/头图）
