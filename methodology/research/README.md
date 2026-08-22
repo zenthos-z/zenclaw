@@ -109,6 +109,7 @@ MBRL 综述 → 神经网络逼近论 → 世界模型动力学 → MBPO → 最
 
 - 每日简报管线：`research-brief`（S2 + arXiv 双层分析）→ 在工具层/已开源技能中引用
 - 翻译管线：`pdf-paper-translation`（pdf2zh + LLM，批量翻译论文）
+- 论文解析：`paddleocr-doc-parsing`（扩展技能，PDF → Markdown + 本地 4x 高清图；精读/粗筛前置步骤，详见 `skills/paddleocr-doc-parsing/`）
 - 知识挂载：精读完成的论文按「已学内容可加」规则挂为知识地图实例层节点
 
 ## 自引用

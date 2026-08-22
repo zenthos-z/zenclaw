@@ -44,7 +44,19 @@ zenclaw/
 - 将 `${DATA_JSON}` 替换为知识地图 JSON（`${名称}` / `${版本}` 同理）
 - 本地 file:// 直接可用；远程部署须与 JSON 同源
 
-### Step 4 · 关联已开源技能（可选）
+### Step 4 · 安装扩展技能（可选）
+
+仓库 `skills/` 下的技能随仓库维护，可直接复制到 Agent 技能目录：
+
+```bash
+# 论文解析（PaddleOCR 云 API + 本地 4x 高清渲染）
+cp -r skills/paddleocr-doc-parsing ~/.hermes/skills/    # Hermes
+# 或 ~/.claude/skills/（Claude Code / OpenClaw）
+# 凭证：cp .env.example .env → 填入 PADDLEOCR 凭证（详见 skills/paddleocr-doc-parsing/SETUP.md）
+# 验证：uv run scripts/smoke_test.py --skip-api-test
+```
+
+### Step 5 · 关联已开源技能（可选）
 
 需要生图/图表/日报能力时，从 my-skills 安装（zenclaw 不重复收录）：
 

@@ -75,6 +75,14 @@
 |------|------|---------|
 | [serving-window（文件列车）](./tools/serving-window/) | AI 产出物统一交付窗口：manifest.json + 静态 HTML | 对象存储 + 静态托管 |
 
+## 🧩 扩展技能（随仓库收录，可安装到任意 Agent）
+
+| 技能 | 说明 | 安装 |
+|------|------|------|
+| [paddleocr-doc-parsing](./skills/paddleocr-doc-parsing/) | 论文/文档 PDF → 结构化 Markdown（表格 cell 级、公式 LaTeX、双栏阅读顺序）+ **本地 4x 高清渲染**（官方 API 图仅 2x 偏糊） | `cp -r skills/paddleocr-doc-parsing ~/.hermes/skills/` 后按 [SETUP.md](./skills/paddleocr-doc-parsing/SETUP.md) 配置凭证 |
+
+> 与「已开源技能」的区别：扩展技能**随仓库维护**，可直接复制安装；已开源技能在 my-skills 独立维护，仅引用。
+
 ## 🔗 已开源技能（不搬运，仅引用）
 
 以下技能已在 [my-skills](https://github.com/zenthos-z/my-skills) 维护，zenclaw 不重复收录：
