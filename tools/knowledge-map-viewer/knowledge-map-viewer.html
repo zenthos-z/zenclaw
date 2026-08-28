@@ -1137,7 +1137,7 @@ function selectNode(id){
         <span class="rtype" style="background:${r.color}1f;color:${r.color}">${r.label} <span style="font-family:var(--mono);font-size:9.5px">${r.en}</span></span>
         ${ev?`<span class="evi r${ev.rank}" title="证据等级 ${ev.rank}/3">${ev.label}</span>`:""}
         <span class="tgt" data-id="${other.node_id}">${other.title}</span>
-        <div class="desc">${l.description||""}</div>
+        <div class="desc">${l.mechanism||l.description||""}</div>
         ${(l.papers&&l.papers.length)?`<div class="papers">${l.papers.join(" · ")}</div>`:""}
       </div>`;
     }).join("");

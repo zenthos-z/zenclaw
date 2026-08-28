@@ -14,6 +14,7 @@
 
 - 节点：`node_id` / `title` / `tags` / `status` / `year` / `created` / `updated`
 - 关系：`depends_on` / `replaces` / `triggers` / `conflicts` / `supports` / `subtopic_of`
+- 关系字段：`mechanism`（机制说明，必填）/ `papers`（佐证论文数组，可选）
 - 证据 tag：`#原文引用` / `#结构推导` / `#领域推断`
 
 ## 功能
