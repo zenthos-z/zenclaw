@@ -39,6 +39,7 @@
 ### 可选字段
 
 - `maturity`（理论类地图用）：`经典闭环` / `成熟未闭合` / `有论文支撑` / `概念阶段`——描述学术共识程度，与个人学习状态（status）正交
+- `body`（详情正文，可选，Markdown 渲染）：点击节点时右侧详情面板展示的正文/展开说明。**注意**：viewer（`tools/knowledge-map-viewer/` 与 `tools/serving-window/文件列车.html`）均读取 `body` 字段渲染详情正文——若按旧习惯写 `summary`，详情面板正文会空白。需要详情内容请填 `body`，而非 `summary`。
 
 ### 升格条件（何时成为独立节点）
 
