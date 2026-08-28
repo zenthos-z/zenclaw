@@ -1670,8 +1670,8 @@ function renderKnowledgeMap(mount,json){
         +'<span class="kmv-rtype" style="background:'+r.color+'1f;color:'+r.color+'">'+esc(r.label)+' <span class="en">'+esc(r.en)+'</span></span>'
         +(ev?'<span class="kmv-evi r'+ev.rank+'" title="证据等级 '+ev.rank+'/3">'+esc(ev.label)+'</span>':'')
         +'<span class="kmv-tgt" data-id="'+esc(o.node_id)+'">'+esc(o.title)+'</span>'
-        +(l.description?'<div class="kmv-desc">'+esc(l.description)+'</div>':'')
-        +((l.papers&&l.papers.length)?'<div class="kmv-papers">'+l.papers.map(esc).join(" · ")+'</div>':'')
+        +(((l.mechanism)||(l.description))?'<div class="kmv-desc">'+esc(l.mechanism||l.description)+'</div>':'')
+        +((l.papers&&l.papers.length)?'<div class="kmv-papers">'+l.papers.map(esc).join(' · ')+'</div>':'')
         +'</div>';
     }).join("");
     rb.querySelectorAll('.kmv-tgt').forEach(t=>t.onclick=()=>selectNode(t.dataset.id));
