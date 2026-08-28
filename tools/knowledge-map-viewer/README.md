@@ -14,6 +14,7 @@
 
 - 节点：`node_id` / `title` / `tags` / `status` / `year` / `created` / `updated`
 - 节点可选字段：`body`（详情正文，Markdown，点击节点时右侧面板渲染）/ `maturity`（成熟度）
+- 元数据：`meta.title` / `meta.version` / `meta.tags_schema` / `meta.description`（可选，左侧栏简介）
 - 关系：`depends_on` / `replaces` / `triggers` / `conflicts` / `supports` / `subtopic_of`
 - 关系字段：`mechanism`（机制说明，必填）/ `papers`（佐证论文数组，可选）
 - 证据 tag：`#原文引用` / `#结构推导` / `#领域推断`
