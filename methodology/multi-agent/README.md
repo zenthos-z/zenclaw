@@ -36,6 +36,24 @@
 | 任务 | A2A 流式直连，带 task_id + contextId |
 | 密钥 | 加密通道（ECDH + AES-GCM 密文经对象存储中转，A2A 只传路径） |
 
+**11 类共享资产清单**（实例，zhan-team 协议 v1.1 附录）：
+
+| # | 类型 | 存放前缀 | 登记要点 |
+|---|---|---|---|
+| 1 | 知识地图 kmap | `kmap/` | 已覆盖 |
+| 2 | 技能 | `skills/<技能名>/` | version + changelog + sync_record |
+| 3 | 项目调研报告 / 技术文档 | `project/<项目id>/docs/` | kind=doc |
+| 4 | 模板 / 脚手架 | `project/_templates/` | kind=template |
+| 5 | 数据 schema / 登记表格式 | `project/_schemas/` | kind=template |
+| 6 | 评测基准 / 评估脚本 | `project/<项目id>/eval/` | 基准锁版本；脚本附验证 |
+| 7 | 共享工具脚本 | `project/_scripts/` | 附验证步骤 |
+| 8 | Prompt 库 / 提示词模板 | `project/_prompts/` | 带适用模型 + 失效场景 |
+| 9 | 方法论 / 工作流模板 | `project/_methodology/` | 区分通用 vs 个人习惯 |
+| 10 | 环境配置 / 踩坑记录 | `project/_env-notes/` | 「环境指纹 + 结论」格式 |
+| 11 | 金标样本 + 事故复盘案例 | `project/<项目id>/goldset/`、`project/_cases/` | 与评测基准互补 |
+
+**负面清单（不进共享）**：凭据/密钥；单端运行状态与配置本体；未验证的猜测笔记；开发中源码（走 GitHub）；未验证的技能/脚本。
+
 ## 三、如何协同（协议机制）
 
 **双轨制**（核心）：
@@ -72,4 +90,4 @@
 
 ---
 
-> **TODO（待补充）**：①「11 类共享资产清单」完整 11 项（canonical 在共享桶 governance）；② box0（Rust 子代理平台）是否纳入；③ 一图架构（多端拓扑 + 协议栈四层 + 双轨制）。
+> **TODO（待补充）**：① box0（Rust 子代理平台）是否纳入；② 一图架构（多端拓扑 + 协议栈四层 + 双轨制）。
