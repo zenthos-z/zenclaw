@@ -11,7 +11,7 @@
 
 <p align="center"><b>OpenClaw 学习方法论与功能增强工具集</b></p>
 
-<p align="center"><i>把 OpenClaw 变成你的知识工厂：协作学习 · 知识地图 · 论文调研 · 视觉 Prompt · 文件列车</i></p>
+<p align="center"><i>把 OpenClaw 变成你的知识工厂：协作学习 · 知识地图 · 论文调研 · 视觉 Prompt · 多 Agent 协作 · 文件列车</i></p>
 
 ---
 
@@ -59,6 +59,7 @@
 | [methodology/research](./methodology/research/) | **论文调研法** | 文献调研怎么做到系统、不遗漏、可验证 |
 | [methodology/learning](./methodology/learning/) | **协作学习模式** | 人和 AI 一起学习时，边界画在哪里 |
 | [methodology/visual-prompt](./methodology/visual-prompt/) | **视觉 Prompt 法** | 生图提示词怎么从「碰运气」变成「可复现」 |
+| [methodology/multi-agent](./methodology/multi-agent/) | **多 Agent 协作法** | 多个 Agent 怎么协作：隔离上下文、双轨协议、幂等去重、真源端制 |
 
 ## 🔧 工具层（按部署条件分档）
 
